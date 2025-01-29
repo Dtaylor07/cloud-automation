@@ -7,8 +7,8 @@ iam_client = boto3.client('iam')
 # IAM user whose keys we need to manage
 IAM_USER = "deployment"
 
-# Time threshold (60 minutes)
-IDLE_TIME = timedelta(minutes=43200)
+# Time threshold (120 minutes)
+IDLE_TIME = timedelta(minutes=120)
 
 def check_and_deactivate_keys():
     now = datetime.now(timezone.utc)
