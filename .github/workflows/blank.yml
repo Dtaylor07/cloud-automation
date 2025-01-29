@@ -1,0 +1,41 @@
+name: Deactivate IAM Keys - SDK
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  check-deactivate-keys:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Step 2: Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      # Step 3: Install dependencies
+      - name: Install boto3
+        run: |
+          python -m pip install --upgrade pip
+          pip install boto3
+
+     # Setup Authentication with OIDC 
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.OIDC_ROLE }}
+          role-session-name: MySessionName
+
+      # Step 4: Run the script
+      - name: Run Script
+        run: python check_iam_keys.py
