@@ -15,9 +15,10 @@ def deactivate_idle_keys():
         for key in access_keys:
             key_id = key['AccessKeyId']
             key_status = key['Status']
+            key_name = key.get('AccessKeyId')  # AWS IAM does not support direct key naming, so we check the ID
 
             # Check last used date only for active keys
-            if key_status == 'Active':
+            if key_status == 'Active' and key_name == "deployment":
                 response = iam_client.get_access_key_last_used(AccessKeyId=key_id)
                 last_used_date = response.get('AccessKeyLastUsed', {}).get('LastUsedDate')
                 
@@ -30,7 +31,7 @@ def deactivate_idle_keys():
                             AccessKeyId=key_id,
                             Status='Inactive'
                         )
-                        print(f"Deactivated key {key_id} for user {user['UserName']}")
+                        print(f"Deactivated unused key {key_id} (deployment) for user {user['UserName']}")
                 else:
                     # If key has never been used, deactivate it
                     iam_client.update_access_key(
