@@ -5,7 +5,7 @@ This repository contains an automated solution to **deactivate AWS IAM keys** th
 
 It uses:
 - **Python & AWS Boto3** to check the last usage time of IAM keys.
-- **GitHub Actions** to run the script every 2 minutes.
+- **GitHub Actions** to run the script every 2 hours.
 - **AWS IAM API** to deactivate unused IAM keys.
 
 ## How It Works
@@ -14,14 +14,12 @@ It uses:
 3. If a key has been **unused for more than 2 hours**, it **deactivates** the key.
 4. The security team is **notified in GitHub logs**.
 
-
 ---
 
 ## **How This Works**
 1. **The GitHub Action runs every 2 hours.**
 2. **Python script (`check_iam_keys.py`) checks IAM keys** using `boto3`.
 3. **If an IAM key is inactive for 2 hours, it is deactivated.**
-4. **Security logs are stored in GitHub Actions logs.**
 
 ---
 
@@ -33,5 +31,5 @@ It uses:
 
 ---
 
-This **ensures that IAM keys are not left active accidentally**, minimizing security risks!
+This **ensures that IAM keys are not left active accidentally**, minimizing security risks! 🚀
 
