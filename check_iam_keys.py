@@ -1,45 +1,40 @@
 import boto3
 from datetime import datetime, timezone, timedelta
 
-def deactivate_idle_keys():
-    # Initialize AWS IAM client
-    iam_client = boto3.client('iam')
+# AWS IAM client
+iam_client = boto3.client('iam')
+
+# IAM user whose keys we need to manage
+IAM_USER = "deployment"
+
+# Time threshold (2 minutes)
+IDLE_TIME = timedelta(minutes=2)
+
+def check_and_deactivate_keys():
     now = datetime.now(timezone.utc)
 
-    # Fetch all IAM users
-    users = iam_client.list_users()['Users']
-    for user in users:
-        # Fetch all access keys for the user
-        access_keys = iam_client.list_access_keys(UserName=user['UserName'])['AccessKeyMetadata']
-        
-        for key in access_keys:
-            key_id = key['AccessKeyId']
-            key_status = key['Status']
-            key_name = key.get('AccessKeyId')  # AWS IAM does not support direct key naming, so we check the ID
+    # Get all access keys for the user
+    response = iam_client.list_access_keys(UserName=IAM_USER)
 
-            # Check last used date only for active keys
-            if key_status == 'Active' and key_name == "deployment":
-                response = iam_client.get_access_key_last_used(AccessKeyId=key_id)
-                last_used_date = response.get('AccessKeyLastUsed', {}).get('LastUsedDate')
-                
-                if last_used_date:
-                    elapsed_time = now - last_used_date
-                    # Deactivate key if it has been idle for more than 2 minutes
-                    if elapsed_time > timedelta(minutes=2):
-                        iam_client.update_access_key(
-                            UserName=user['UserName'],
-                            AccessKeyId=key_id,
-                            Status='Inactive'
-                        )
-                        print(f"Deactivated unused key {key_id} (deployment) for user {user['UserName']}")
-                else:
-                    # If key has never been used, deactivate it
-                    iam_client.update_access_key(
-                        UserName=user['UserName'],
-                        AccessKeyId=key_id,
-                        Status='Inactive'
-                    )
-                    print(f"Deactivated unused key {key_id} for user {user['UserName']}")
+    for key in response['AccessKeyMetadata']:
+        key_id = key['AccessKeyId']
+        key_status = key['Status']
+
+        if key_status == 'Active':
+            # Get the last used time of the key
+            last_used_response = iam_client.get_access_key_last_used(AccessKeyId=key_id)
+            last_used_date = last_used_response.get('AccessKeyLastUsed', {}).get('LastUsedDate')
+
+            if last_used_date:
+                elapsed_time = now - last_used_date
+                if elapsed_time > IDLE_TIME:
+                    # Deactivate the key
+                    iam_client.update_access_key(UserName=IAM_USER, AccessKeyId=key_id, Status='Inactive')
+                    print(f"Deactivated key {key_id} for user {IAM_USER} due to inactivity.")
+            else:
+                # If key has never been used, deactivate it
+                iam_client.update_access_key(UserName=IAM_USER, AccessKeyId=key_id, Status='Inactive')
+                print(f"Deactivated unused key {key_id} for user {IAM_USER}.")
 
 if __name__ == "__main__":
-    deactivate_idle_keys()
+    check_and_deactivate_keys()
