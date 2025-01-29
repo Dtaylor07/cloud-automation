@@ -1,0 +1,73 @@
+name: 'Plan'
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: read    # This is required for actions/checkout
+
+on:
+#  schedule:
+ #   - cron: "0 * * * *" # Runs every hour
+  workflow_dispatch: # Allows manual triggering
+
+jobs:
+  terraform:
+    name: 'deactivate-unused-keys:'
+    runs-on: ubuntu-latest
+    environment: PROD
+
+    # Use the Bash shell regardless whether the GitHub Actions runner is ubuntu-latest, macos-latest, or windows-latest
+    defaults:
+      run:
+        shell: bash
+
+    steps:
+    # Checkout the repository to the GitHub Actions runner
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # Setup Authentication with OIDC 
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+      with:
+          aws-region: us-east-1
+          role-to-assume: ${{ secrets.OIDC_ROLE }}
+          role-session-name: MySessionName
+
+    - name: Check and Deactivate Unused IAM Keys
+      run: |
+          # Get the current time in ISO format
+          CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+
+          # Get all IAM users
+          USERS=$(aws iam list-users --query "Users[*].UserName" --output text)
+
+          for USER in $USERS; do
+            echo "Checking IAM keys for user: $USER"
+            
+            # Get all access keys for the user
+            KEYS=$(aws iam list-access-keys --user-name $USER --query "AccessKeyMetadata[?Status=='Active'].AccessKeyId" --output text)
+
+            for KEY in $KEYS; do
+              # Get the last used date of the key
+              LAST_USED=$(aws iam get-access-key-last-used --access-key-id $KEY --query "AccessKeyLastUsed.LastUsedDate" --output text)
+
+              # If the key has never been used
+              if [ "$LAST_USED" == "None" ]; then
+                echo "Key $KEY has never been used. Deactivating it."
+                aws iam update-access-key --access-key-id $KEY --status Inactive --user-name $USER
+                continue
+              fi
+
+              # Calculate the difference in hours
+              TIME_DIFF=$(($(date -d $CURRENT_TIME +%s) - $(date -d $LAST_USED +%s)))
+              HOURS_DIFF=$((TIME_DIFF / 3600))
+
+              # If the key has been inactive for more than 2 hours
+              if [ $HOURS_DIFF -ge 2 ]; then
+                echo "Key $KEY has been inactive for over 2 hours. Deactivating it."
+                aws iam update-access-key --access-key-id $KEY --status Inactive --user-name $USER
+              else
+                echo "Key $KEY is active and used within the last 2 hours."
+              fi
+            done
+          done
