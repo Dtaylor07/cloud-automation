@@ -34,7 +34,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
         with:
           aws-region: us-east-1
-          role-to-assume: ${{ secrets.OIDC_ROLE }}
+          role-to-assume: ${{ secrets.NIKI_OIDC_ROLE }}
           role-session-name: MySessionName
 
       # Step 4: Run the script
