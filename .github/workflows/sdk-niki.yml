@@ -1,4 +1,4 @@
-name: Deactivate IAM Keys - SDK
+name: Deactivate IAM Keys - Niki
 
 permissions:
   id-token: write # This is required for requesting the JWT
